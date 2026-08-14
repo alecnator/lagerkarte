@@ -1,0 +1,850 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#1F1D1B">
+<title>Lagerkarte</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=JetBrains+Mono:wght@400;500;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+<style>
+  :root{
+    --paper:#E9E3D3;
+    --paper-dark:#DCD4BE;
+    --ink:#211E1A;
+    --ink-soft:#5B564C;
+    --orange:#E8590C;
+    --orange-dark:#C24905;
+    --green:#3F6B4A;
+    --red:#B23A2E;
+    --card:#F5F1E6;
+    --line:#C9C0A8;
+    --radius:10px;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--paper);
+    color:var(--ink);
+    font-family:'Inter',sans-serif;
+    padding-bottom:76px;
+    min-height:100vh;
+    background-image:
+      radial-gradient(circle at 1px 1px, rgba(0,0,0,0.05) 1px, transparent 0);
+    background-size:14px 14px;
+  }
+  h1,h2,h3{font-family:'Barlow Condensed',sans-serif; text-transform:uppercase; letter-spacing:0.03em; margin:0;}
+  .mono{font-family:'JetBrains Mono',monospace;}
+  header.top{
+    position:sticky; top:0; z-index:20;
+    background:var(--ink); color:var(--paper);
+    padding:14px 16px 12px;
+    display:flex; align-items:center; justify-content:space-between;
+    border-bottom:3px solid var(--orange);
+  }
+  header.top h1{font-size:22px; font-weight:700; letter-spacing:0.04em;}
+  header.top .tag-hole{width:10px;height:10px;border-radius:50%;background:var(--paper);opacity:.25;}
+  main{padding:16px; max-width:560px; margin:0 auto;}
+  .stat-grid{display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:16px;}
+  .stat{
+    background:var(--card); border:1px solid var(--line); border-radius:var(--radius);
+    padding:12px 14px; position:relative; overflow:hidden;
+  }
+  .stat::before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--orange);}
+  .stat .label{font-size:11px; text-transform:uppercase; letter-spacing:0.06em; color:var(--ink-soft);}
+  .stat .value{font-family:'JetBrains Mono',monospace; font-size:22px; font-weight:700; margin-top:2px;}
+  .actions-row{display:flex; gap:10px; margin-bottom:18px;}
+  .btn{
+    display:flex; align-items:center; justify-content:center; gap:8px;
+    border:none; border-radius:var(--radius); padding:14px 16px;
+    font-family:'Barlow Condensed',sans-serif; font-size:17px; font-weight:600; letter-spacing:0.02em;
+    text-transform:uppercase; cursor:pointer; flex:1;
+  }
+  .btn-primary{background:var(--orange); color:#fff;}
+  .btn-primary:active{background:var(--orange-dark);}
+  .btn-secondary{background:var(--ink); color:var(--paper);}
+  .btn-outline{background:transparent; border:1.5px solid var(--ink); color:var(--ink);}
+  .btn-small{padding:8px 12px; font-size:14px; flex:none;}
+  .btn-danger{background:var(--red); color:#fff;}
+  .btn:disabled{opacity:.4;}
+  .card{
+    background:var(--card); border:1px solid var(--line); border-radius:var(--radius);
+    padding:14px; margin-bottom:12px; position:relative;
+  }
+  .card::after{
+    content:""; position:absolute; right:10px; top:50%; transform:translateY(-50%);
+    width:9px; height:9px; border-radius:50%; background:var(--paper);
+    box-shadow:0 0 0 2px var(--line) inset;
+  }
+  .card .code{font-family:'JetBrains Mono',monospace; font-size:12px; color:var(--ink-soft); word-break:break-all;}
+  .card h3{font-size:20px; margin-bottom:2px;}
+  .card .meta{font-size:13px; color:var(--ink-soft); margin-top:4px;}
+  .field{margin-bottom:12px;}
+  .field label{display:block; font-size:12px; text-transform:uppercase; letter-spacing:0.05em; color:var(--ink-soft); margin-bottom:4px;}
+  .field input, .field textarea, .field select{
+    width:100%; padding:10px 11px; border:1.5px solid var(--line); border-radius:8px;
+    background:#fff; font-size:15px; font-family:'Inter',sans-serif; color:var(--ink);
+  }
+  .field textarea{resize:vertical; min-height:60px;}
+  #reader{width:100%; border-radius:var(--radius); overflow:hidden; margin-bottom:12px; border:2px solid var(--ink);}
+  .empty{
+    text-align:center; padding:40px 16px; color:var(--ink-soft);
+  }
+  .empty .big{font-size:40px; margin-bottom:8px;}
+  nav.tabbar{
+    position:fixed; bottom:0; left:0; right:0; z-index:30;
+    background:var(--ink); display:flex; padding:6px 4px calc(6px + env(safe-area-inset-bottom));
+    border-top:3px solid var(--orange);
+  }
+  nav.tabbar button{
+    flex:1; background:none; border:none; color:#948E80; padding:8px 2px;
+    font-family:'Barlow Condensed',sans-serif; font-size:12.5px; text-transform:uppercase; letter-spacing:0.03em;
+    display:flex; flex-direction:column; align-items:center; gap:3px; cursor:pointer;
+  }
+  nav.tabbar button.active{color:var(--paper);}
+  nav.tabbar button .dot{width:5px;height:5px;border-radius:50%;background:var(--orange); opacity:0;}
+  nav.tabbar button.active .dot{opacity:1;}
+  .row{display:flex; gap:10px; align-items:center; justify-content:space-between;}
+  .divider{height:1px; background:var(--line); margin:12px 0; border:none;}
+  .line-item{display:flex; justify-content:space-between; align-items:center; padding:8px 0; border-bottom:1px dashed var(--line);}
+  .line-item:last-child{border-bottom:none;}
+  .line-item .name{font-weight:600; font-size:15px;}
+  .line-item .sub{font-size:12px; color:var(--ink-soft); font-family:'JetBrains Mono',monospace;}
+  .qty-controls{display:flex; align-items:center; gap:8px;}
+  .qty-controls button{
+    width:28px; height:28px; border-radius:6px; border:1.5px solid var(--ink); background:#fff;
+    font-size:16px; font-weight:700; cursor:pointer; line-height:1;
+  }
+  .badge{display:inline-block; padding:2px 8px; border-radius:20px; font-size:11px; font-weight:700; text-transform:uppercase;}
+  .badge-ok{background:#DEE9E1; color:var(--green);}
+  .badge-warn{background:#F4DEDA; color:var(--red);}
+  .search-bar input{
+    width:100%; padding:12px 14px; border-radius:var(--radius); border:1.5px solid var(--line);
+    font-size:15px; margin-bottom:14px; background:#fff;
+  }
+  .toggle-group{display:flex; border:1.5px solid var(--ink); border-radius:8px; overflow:hidden; margin-bottom:14px;}
+  .toggle-group button{flex:1; background:#fff; border:none; padding:9px; font-family:'Barlow Condensed',sans-serif; text-transform:uppercase; font-weight:600; cursor:pointer;}
+  .toggle-group button.active{background:var(--ink); color:var(--paper);}
+  .toast{
+    position:fixed; bottom:90px; left:50%; transform:translateX(-50%);
+    background:var(--ink); color:var(--paper); padding:10px 18px; border-radius:30px;
+    font-size:14px; z-index:50; box-shadow:0 4px 14px rgba(0,0,0,.3); opacity:0; transition:opacity .25s, transform .25s;
+    pointer-events:none;
+  }
+  .toast.show{opacity:1; transform:translateX(-50%) translateY(-6px);}
+  .collapsible-head{cursor:pointer; display:flex; justify-content:space-between; align-items:center;}
+  .chevron{transition:transform .2s;}
+  .chevron.open{transform:rotate(90deg);}
+  a{color:var(--orange-dark);}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <h1 id="pageTitle">Lagerkarte</h1>
+  <div class="tag-hole"></div>
+</header>
+
+<main id="app"></main>
+
+<div id="toast" class="toast"></div>
+
+<nav class="tabbar">
+  <button data-view="dashboard"><span>◆</span><span>Start</span><span class="dot"></span></button>
+  <button data-view="box"><span>▣</span><span>Box</span><span class="dot"></span></button>
+  <button data-view="artikel"><span>▤</span><span>Artikel</span><span class="dot"></span></button>
+  <button data-view="uebersicht"><span>≡</span><span>Übersicht</span><span class="dot"></span></button>
+  <button data-view="inventur"><span>✓</span><span>Inventur</span><span class="dot"></span></button>
+</nav>
+
+<script>
+/* ---------------------------------------------------------
+   DATENHALTUNG (localStorage)
+--------------------------------------------------------- */
+const DB_KEY = 'lagerkarte_db_v1';
+function loadDB(){
+  const raw = localStorage.getItem(DB_KEY);
+  if(raw) return JSON.parse(raw);
+  return { boxes:[], products:[], stock:[], discrepancies:[] };
+}
+function saveDB(){ localStorage.setItem(DB_KEY, JSON.stringify(db)); }
+let db = loadDB();
+
+function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
+function money(n){ return (Math.round((n+Number.EPSILON)*100)/100).toFixed(2) + ' €'; }
+function fmtDate(ts){ if(!ts) return '—'; const d = new Date(ts); return d.toLocaleDateString('de-DE',{day:'2-digit',month:'2-digit',year:'numeric'}); }
+
+function getBox(code){ return db.boxes.find(b=>b.code===code); }
+function getProduct(barcode){ return db.products.find(p=>p.barcode===barcode); }
+function stockForBox(boxId){ return db.stock.filter(s=>s.boxId===boxId); }
+function stockForProduct(barcode){ return db.stock.filter(s=>s.barcode===barcode); }
+
+function boxTotals(boxId){
+  const items = stockForBox(boxId);
+  let qty=0, value=0, valueNoShip=0;
+  items.forEach(s=>{
+    const p = getProduct(s.barcode);
+    if(!p) return;
+    qty += s.qty;
+    value += s.qty * p.price;
+    valueNoShip += s.qty * (p.price - p.shipping);
+  });
+  return {qty, value, valueNoShip};
+}
+
+function globalTotals(){
+  let boxes = db.boxes.length;
+  let productTypes = db.products.length;
+  let qty=0, value=0, valueNoShip=0;
+  db.stock.forEach(s=>{
+    const p = getProduct(s.barcode);
+    if(!p) return;
+    qty += s.qty;
+    value += s.qty * p.price;
+    valueNoShip += s.qty * (p.price - p.shipping);
+  });
+  return {boxes, productTypes, qty, value, valueNoShip};
+}
+
+/* ---------------------------------------------------------
+   NAVIGATION
+--------------------------------------------------------- */
+let currentView = 'dashboard';
+let scanState = null; // hält aktive Scanner-Instanz
+const titles = {dashboard:'Lagerkarte', box:'Box scannen', artikel:'Artikel scannen', uebersicht:'Übersicht', inventur:'Inventur'};
+
+function navigate(view){
+  stopScannerIfActive();
+  currentView = view;
+  document.getElementById('pageTitle').textContent = titles[view];
+  document.querySelectorAll('nav.tabbar button').forEach(b=>b.classList.toggle('active', b.dataset.view===view));
+  render();
+}
+document.querySelectorAll('nav.tabbar button').forEach(b=>b.addEventListener('click', ()=>navigate(b.dataset.view)));
+
+function toast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(toast._t);
+  toast._t = setTimeout(()=>t.classList.remove('show'), 1800);
+}
+
+/* ---------------------------------------------------------
+   RENDER-DISPATCH
+--------------------------------------------------------- */
+function render(){
+  const app = document.getElementById('app');
+  if(currentView==='dashboard') app.innerHTML = renderDashboard();
+  else if(currentView==='box') app.innerHTML = renderBoxView();
+  else if(currentView==='artikel') app.innerHTML = renderArtikelView();
+  else if(currentView==='uebersicht') app.innerHTML = renderUebersicht();
+  else if(currentView==='inventur') app.innerHTML = renderInventur();
+  bindViewEvents();
+}
+
+/* ---------------------------------------------------------
+   DASHBOARD
+--------------------------------------------------------- */
+function renderDashboard(){
+  const t = globalTotals();
+  const oldest = [...db.boxes].sort((a,b)=>(a.lastCheckedAt||0)-(b.lastCheckedAt||0))[0];
+  return `
+    <div class="stat-grid">
+      <div class="stat"><div class="label">Boxen</div><div class="value">${t.boxes}</div></div>
+      <div class="stat"><div class="label">Artikel-Typen</div><div class="value">${t.productTypes}</div></div>
+      <div class="stat"><div class="label">Stück gesamt</div><div class="value">${t.qty}</div></div>
+      <div class="stat"><div class="label">Wert (netto Versand)</div><div class="value" style="font-size:16px">${money(t.valueNoShip)}</div></div>
+    </div>
+    <div class="card">
+      <div class="row"><span class="meta">Verkaufswert mit Versandkosten</span><span class="mono" style="font-weight:700">${money(t.value)}</span></div>
+      <hr class="divider">
+      <div class="row"><span class="meta">Verkaufswert ohne Versandkosten</span><span class="mono" style="font-weight:700">${money(t.valueNoShip)}</span></div>
+    </div>
+    <div class="actions-row">
+      <button class="btn btn-primary" data-nav="box">📦 Box scannen</button>
+      <button class="btn btn-secondary" data-nav="artikel">🏷️ Artikel scannen</button>
+    </div>
+    <div class="card">
+      <h3 style="font-size:17px; margin-bottom:6px;">Inventur</h3>
+      <p class="meta" style="margin:0 0 10px">Am längsten nicht geprüft: ${oldest? (oldest.location||oldest.code) : '—'} ${oldest? '· '+fmtDate(oldest.lastCheckedAt) : ''}</p>
+      <button class="btn btn-outline" data-nav="inventur" style="width:100%">Zur Inventur</button>
+    </div>
+  `;
+}
+
+/* ---------------------------------------------------------
+   BOX-ANSICHT
+--------------------------------------------------------- */
+let activeBoxCode = null;
+
+function renderBoxView(){
+  if(!activeBoxCode){
+    return `
+      <div id="reader"></div>
+      <button class="btn btn-primary" id="startBoxScan" style="width:100%; margin-bottom:14px;">📷 Kamera starten &amp; Box-QR scannen</button>
+      <div class="field">
+        <label>...oder Box-Code manuell eingeben</label>
+        <div class="row">
+          <input type="text" id="manualBoxCode" placeholder="z. B. BOX-001">
+          <button class="btn btn-outline btn-small" id="manualBoxGo">Los</button>
+        </div>
+      </div>
+      ${db.boxes.length ? `<h3 style="margin:18px 0 8px; font-size:16px; color:var(--ink-soft)">Zuletzt angelegt</h3>` + [...db.boxes].reverse().slice(0,4).map(b=>`
+        <div class="card" data-open-box="${b.code}">
+          <h3>${escapeHtml(b.location||'Ohne Standort')}</h3>
+          <div class="code">${escapeHtml(b.code)}</div>
+        </div>`).join('') : `<div class="empty"><div class="big">📦</div>Noch keine Box gescannt.<br>Starte die Kamera, um deine erste Box zu registrieren.</div>`}
+    `;
+  }
+
+  const box = getBox(activeBoxCode);
+  if(!box){
+    // neue Box registrieren
+    return `
+      <div class="card">
+        <h3>Neue Box registrieren</h3>
+        <div class="code" style="margin-bottom:12px">${escapeHtml(activeBoxCode)}</div>
+        <div class="field"><label>Standort (z. B. Regal A3, Keller)</label><input type="text" id="newBoxLocation" placeholder="Standort eingeben"></div>
+        <div class="field"><label>Notiz (optional)</label><textarea id="newBoxNote" placeholder="Notiz"></textarea></div>
+        <button class="btn btn-primary" id="saveNewBox" style="width:100%">Box speichern</button>
+      </div>
+      <button class="btn btn-outline" id="backToBoxScan" style="width:100%">← Zurück zum Scannen</button>
+    `;
+  }
+
+  const items = stockForBox(box.id);
+  const totals = boxTotals(box.id);
+  return `
+    <div class="card">
+      <div class="row" style="align-items:flex-start">
+        <div style="flex:1">
+          <h3 id="boxLocLabel">${escapeHtml(box.location||'Ohne Standort')}</h3>
+          <div class="code">${escapeHtml(box.code)}</div>
+        </div>
+        <button class="btn btn-outline btn-small" id="editBoxBtn">Bearbeiten</button>
+      </div>
+      <div id="boxEditArea" style="display:none; margin-top:12px">
+        <div class="field"><label>Standort</label><input type="text" id="editLocation" value="${escapeHtml(box.location||'')}"></div>
+        <div class="field"><label>Notiz</label><textarea id="editNote">${escapeHtml(box.note||'')}</textarea></div>
+        <button class="btn btn-primary btn-small" id="saveBoxEdit">Speichern</button>
+      </div>
+      ${box.note ? `<p class="meta" style="margin-top:8px">${escapeHtml(box.note)}</p>` : ''}
+    </div>
+    <div class="stat-grid">
+      <div class="stat"><div class="label">Stück in Box</div><div class="value">${totals.qty}</div></div>
+      <div class="stat"><div class="label">Wert m. Versand</div><div class="value" style="font-size:16px">${money(totals.value)}</div></div>
+    </div>
+    <div class="card"><div class="row"><span class="meta">Wert ohne Versandkosten</span><span class="mono" style="font-weight:700">${money(totals.valueNoShip)}</span></div></div>
+
+    <h3 style="margin:16px 0 8px; font-size:17px;">Inhalt (${items.length} Artikel-Typen)</h3>
+    ${items.length===0 ? `<div class="empty">Diese Box ist noch leer.<br>Scanne einen Artikel und ordne ihn dieser Box zu.</div>` :
+      items.map(s=>{
+        const p = getProduct(s.barcode);
+        if(!p) return '';
+        return `<div class="card" style="padding:12px 14px">
+          <div class="line-item">
+            <div>
+              <div class="name">${escapeHtml(p.name)}</div>
+              <div class="sub">${escapeHtml(p.barcode)}</div>
+            </div>
+            <div style="text-align:right">
+              <div class="mono" style="font-weight:700">${s.qty} Stk.</div>
+              <div class="sub">${money(p.price)} · Versand ${money(p.shipping)}</div>
+            </div>
+          </div>
+        </div>`;
+      }).join('')
+    }
+    <button class="btn btn-outline" id="closeBoxBtn" style="width:100%; margin-top:6px;">Box schließen</button>
+  `;
+}
+
+/* ---------------------------------------------------------
+   ARTIKEL-ANSICHT
+--------------------------------------------------------- */
+let activeBarcode = null;
+let assignFlowStep = null; // 'select-box' | 'enter-qty'
+let assignTargetBoxCode = null;
+
+function renderArtikelView(){
+  if(!activeBarcode){
+    return `
+      <div id="reader"></div>
+      <button class="btn btn-primary" id="startArtikelScan" style="width:100%; margin-bottom:14px;">📷 Kamera starten &amp; Barcode scannen</button>
+      <div class="field">
+        <label>...oder Barcode manuell eingeben</label>
+        <div class="row">
+          <input type="text" id="manualBarcode" placeholder="z. B. 4006381333931">
+          <button class="btn btn-outline btn-small" id="manualBarcodeGo">Los</button>
+        </div>
+      </div>
+      ${db.products.length ? `<h3 style="margin:18px 0 8px; font-size:16px; color:var(--ink-soft)">Zuletzt angelegt</h3>` + [...db.products].reverse().slice(0,4).map(p=>`
+        <div class="card" data-open-product="${p.barcode}">
+          <h3>${escapeHtml(p.name)}</h3>
+          <div class="code">${escapeHtml(p.barcode)}</div>
+        </div>`).join('') : `<div class="empty"><div class="big">🏷️</div>Noch kein Artikel gescannt.</div>`}
+    `;
+  }
+
+  const product = getProduct(activeBarcode);
+
+  if(!product){
+    return `
+      <div class="card">
+        <h3>Neues Produkt anlegen</h3>
+        <div class="code" style="margin-bottom:12px">${escapeHtml(activeBarcode)}</div>
+        <div class="field"><label>Produktname</label><input type="text" id="newProdName" placeholder="Produktname"></div>
+        <div class="field"><label>Verkaufspreis (€)</label><input type="number" step="0.01" id="newProdPrice" placeholder="0,00"></div>
+        <div class="field"><label>Versandkosten pro Stück (€)</label><input type="number" step="0.01" id="newProdShipping" placeholder="0,00"></div>
+        <button class="btn btn-primary" id="saveNewProduct" style="width:100%">Weiter zu Box-Zuordnung</button>
+      </div>
+      <button class="btn btn-outline" id="backToArtikelScan" style="width:100%">← Zurück zum Scannen</button>
+    `;
+  }
+
+  if(assignFlowStep){
+    return renderAssignFlow(product);
+  }
+
+  const stockRows = stockForProduct(product.barcode);
+  const totalQty = stockRows.reduce((a,s)=>a+s.qty,0);
+  return `
+    <div class="card">
+      <h3>${escapeHtml(product.name)}</h3>
+      <div class="code">${escapeHtml(product.barcode)}</div>
+      <hr class="divider">
+      <div class="row"><span class="meta">Verkaufspreis</span><span class="mono">${money(product.price)}</span></div>
+      <div class="row" style="margin-top:6px"><span class="meta">Versandkosten / Stück</span><span class="mono">${money(product.shipping)}</span></div>
+      <div class="row" style="margin-top:6px"><span class="meta">Gesamtbestand</span><span class="mono" style="font-weight:700">${totalQty} Stk.</span></div>
+    </div>
+    <div class="actions-row">
+      <button class="btn btn-primary" id="addStockBtn">+ Bestand einer Box zuordnen</button>
+    </div>
+    <button class="btn btn-outline btn-small" id="editProductBtn" style="width:100%; margin-bottom:14px;">Produktdaten bearbeiten</button>
+
+    <h3 style="margin:10px 0 8px; font-size:17px;">In diesen Boxen</h3>
+    ${stockRows.length===0 ? `<div class="empty">Dieser Artikel ist noch keiner Box zugeordnet.</div>` :
+      stockRows.map(s=>{
+        const box = db.boxes.find(b=>b.id===s.boxId);
+        return `<div class="card" style="padding:12px 14px">
+          <div class="line-item">
+            <div>
+              <div class="name">${escapeHtml(box?box.location||'Ohne Standort':'Unbekannte Box')}</div>
+              <div class="sub">${escapeHtml(box?box.code:'')}</div>
+            </div>
+            <div class="qty-controls">
+              <button data-stockminus="${s.id}">−</button>
+              <span class="mono" style="min-width:22px; text-align:center;">${s.qty}</span>
+              <button data-stockplus="${s.id}">+</button>
+              <button data-stockdel="${s.id}" style="border-color:var(--red); color:var(--red)">×</button>
+            </div>
+          </div>
+        </div>`;
+      }).join('')
+    }
+    <button class="btn btn-outline" id="closeProductBtn" style="width:100%; margin-top:6px;">Artikel schließen</button>
+  `;
+}
+
+function renderAssignFlow(product){
+  if(assignFlowStep==='select-box'){
+    return `
+      <div class="card">
+        <h3 style="font-size:18px;">${escapeHtml(product.name)}</h3>
+        <p class="meta">Welcher Box soll der Bestand zugeordnet werden?</p>
+      </div>
+      <div id="reader"></div>
+      <button class="btn btn-primary" id="startAssignScan" style="width:100%; margin-bottom:14px;">📷 Box-QR scannen</button>
+      ${db.boxes.length? `
+      <div class="field">
+        <label>...oder Box auswählen</label>
+        <select id="assignBoxSelect">
+          <option value="">– Box wählen –</option>
+          ${db.boxes.map(b=>`<option value="${escapeHtml(b.code)}">${escapeHtml(b.location||b.code)}</option>`).join('')}
+        </select>
+      </div>
+      <button class="btn btn-secondary" id="assignBoxSelectGo" style="width:100%">Übernehmen</button>` : `<div class="empty">Noch keine Boxen angelegt. Bitte zuerst eine Box scannen.</div>`}
+      <button class="btn btn-outline" id="cancelAssign" style="width:100%; margin-top:14px;">Abbrechen</button>
+    `;
+  }
+  if(assignFlowStep==='enter-qty'){
+    const box = getBox(assignTargetBoxCode);
+    return `
+      <div class="card">
+        <h3 style="font-size:18px;">${escapeHtml(product.name)}</h3>
+        <p class="meta">wird zugeordnet zu: <strong>${escapeHtml(box?box.location||box.code:'')}</strong></p>
+        <div class="field" style="margin-top:12px"><label>Menge (Stück)</label><input type="number" min="1" id="assignQty" value="1"></div>
+        <button class="btn btn-primary" id="confirmAssignQty" style="width:100%">Zur Box hinzufügen</button>
+      </div>
+      <button class="btn btn-outline" id="cancelAssign" style="width:100%">Abbrechen</button>
+    `;
+  }
+}
+
+/* ---------------------------------------------------------
+   ÜBERSICHT
+--------------------------------------------------------- */
+let uebersichtMode = 'boxen';
+let uebersichtSearch = '';
+let openBoxIds = new Set();
+
+function renderUebersicht(){
+  const q = uebersichtSearch.toLowerCase();
+  let body = '';
+  if(uebersichtMode==='boxen'){
+    const boxes = db.boxes.filter(b=>
+      !q || (b.location||'').toLowerCase().includes(q) || b.code.toLowerCase().includes(q)
+    );
+    body = boxes.length===0 ? `<div class="empty">Keine Boxen gefunden.</div>` : boxes.map(b=>{
+      const totals = boxTotals(b.id);
+      const items = stockForBox(b.id);
+      const isOpen = openBoxIds.has(b.id);
+      return `<div class="card">
+        <div class="collapsible-head" data-toggle-box="${b.id}">
+          <div>
+            <h3>${escapeHtml(b.location||'Ohne Standort')}</h3>
+            <div class="code">${escapeHtml(b.code)}</div>
+          </div>
+          <div style="text-align:right">
+            <div class="mono" style="font-weight:700">${totals.qty} Stk.</div>
+            <div class="sub" style="font-size:12px">${money(totals.value)}</div>
+          </div>
+        </div>
+        ${isOpen ? `<hr class="divider">` + (items.length? items.map(s=>{
+          const p = getProduct(s.barcode);
+          return p? `<div class="line-item"><span class="name" style="font-weight:500">${escapeHtml(p.name)}</span><span class="mono">${s.qty} Stk.</span></div>` : '';
+        }).join('') : `<p class="meta">Leer</p>`) : ''}
+      </div>`;
+    }).join('');
+  } else {
+    const products = db.products.filter(p=>
+      !q || p.name.toLowerCase().includes(q) || p.barcode.toLowerCase().includes(q)
+    );
+    body = products.length===0 ? `<div class="empty">Keine Artikel gefunden.</div>` : products.map(p=>{
+      const rows = stockForProduct(p.barcode);
+      const qty = rows.reduce((a,s)=>a+s.qty,0);
+      return `<div class="card" data-open-product-list="${p.barcode}">
+        <div class="line-item">
+          <div>
+            <div class="name">${escapeHtml(p.name)}</div>
+            <div class="sub">${escapeHtml(p.barcode)}</div>
+          </div>
+          <div style="text-align:right">
+            <div class="mono" style="font-weight:700">${qty} Stk.</div>
+            <div class="sub">${money(p.price)}</div>
+          </div>
+        </div>
+      </div>`;
+    }).join('');
+  }
+
+  const t = globalTotals();
+  return `
+    <div class="search-bar"><input type="text" id="uebSearch" placeholder="Suche nach Name, Standort oder Code..." value="${escapeHtml(uebersichtSearch)}"></div>
+    <div class="toggle-group">
+      <button class="${uebersichtMode==='boxen'?'active':''}" data-mode="boxen">Nach Boxen</button>
+      <button class="${uebersichtMode==='artikel'?'active':''}" data-mode="artikel">Nach Artikeln</button>
+    </div>
+    <div class="card" style="margin-bottom:16px;">
+      <div class="row"><span class="meta">Gesamtwert mit Versand</span><span class="mono" style="font-weight:700">${money(t.value)}</span></div>
+      <div class="row" style="margin-top:4px"><span class="meta">Gesamtwert ohne Versand</span><span class="mono" style="font-weight:700">${money(t.valueNoShip)}</span></div>
+    </div>
+    ${body}
+  `;
+}
+
+/* ---------------------------------------------------------
+   INVENTUR
+--------------------------------------------------------- */
+let inventurActiveBoxCode = null;
+let inventurCounts = {}; // stockId -> counted qty
+
+function renderInventur(){
+  if(inventurActiveBoxCode){
+    const box = getBox(inventurActiveBoxCode);
+    if(!box) { inventurActiveBoxCode=null; return renderInventur(); }
+    const items = stockForBox(box.id);
+    return `
+      <div class="card">
+        <h3>${escapeHtml(box.location||box.code)}</h3>
+        <div class="code">${escapeHtml(box.code)}</div>
+        <p class="meta" style="margin-top:6px">Zuletzt geprüft: ${fmtDate(box.lastCheckedAt)}</p>
+      </div>
+      ${items.length===0 ? `<div class="empty">Diese Box hat keine Artikel.</div>` : items.map(s=>{
+        const p = getProduct(s.barcode);
+        if(!p) return '';
+        const counted = inventurCounts[s.id] !== undefined ? inventurCounts[s.id] : s.qty;
+        const diff = counted - s.qty;
+        return `<div class="card" style="padding:12px 14px">
+          <div class="line-item">
+            <div>
+              <div class="name">${escapeHtml(p.name)}</div>
+              <div class="sub">Soll: ${s.qty} Stk.</div>
+            </div>
+            <div class="qty-controls">
+              <button data-invminus="${s.id}">−</button>
+              <span class="mono" style="min-width:24px; text-align:center; font-weight:700;">${counted}</span>
+              <button data-invplus="${s.id}">+</button>
+            </div>
+          </div>
+          ${diff!==0 ? `<div style="text-align:right"><span class="badge badge-warn">Abweichung ${diff>0?'+':''}${diff}</span></div>` : `<div style="text-align:right"><span class="badge badge-ok">Stimmt</span></div>`}
+        </div>`;
+      }).join('')}
+      <button class="btn btn-primary" id="confirmInventurBtn" style="width:100%; margin-top:10px;">Inventur für diese Box bestätigen</button>
+      <button class="btn btn-outline" id="cancelInventurBtn" style="width:100%; margin-top:10px;">Abbrechen</button>
+    `;
+  }
+
+  const sorted = [...db.boxes].sort((a,b)=>(a.lastCheckedAt||0)-(b.lastCheckedAt||0));
+  const recentDiscrepancies = [...db.discrepancies].reverse().slice(0,6);
+  return `
+    <div id="reader"></div>
+    <button class="btn btn-primary" id="startInventurScan" style="width:100%; margin-bottom:16px;">📷 Box für Inventur scannen</button>
+    <h3 style="margin:6px 0 8px; font-size:17px;">Boxen nach Prüfdatum</h3>
+    ${sorted.length===0 ? `<div class="empty">Noch keine Boxen angelegt.</div>` : sorted.map(b=>{
+      const overdue = !b.lastCheckedAt || (Date.now() - b.lastCheckedAt) > 7*24*3600*1000;
+      return `<div class="card" data-inv-open="${b.code}">
+        <div class="row">
+          <div>
+            <h3 style="font-size:17px;">${escapeHtml(b.location||b.code)}</h3>
+            <div class="meta">Zuletzt geprüft: ${fmtDate(b.lastCheckedAt)}</div>
+          </div>
+          <span class="badge ${overdue?'badge-warn':'badge-ok'}">${overdue?'Fällig':'OK'}</span>
+        </div>
+      </div>`;
+    }).join('')}
+    ${recentDiscrepancies.length? `<h3 style="margin:18px 0 8px; font-size:17px;">Letzte Abweichungen</h3>` +
+      recentDiscrepancies.map(d=>{
+        const p = getProduct(d.barcode); const box = db.boxes.find(b=>b.id===d.boxId);
+        return `<div class="card" style="padding:10px 14px">
+          <div class="row"><span class="name" style="font-size:14px">${p?escapeHtml(p.name):'?'} · ${box?escapeHtml(box.location||box.code):'?'}</span><span class="mono">${d.expectedQty}→${d.countedQty}</span></div>
+          <div class="meta" style="font-size:11px">${fmtDate(d.date)}</div>
+        </div>`;
+      }).join('') : ''}
+  `;
+}
+
+/* ---------------------------------------------------------
+   SCANNER
+--------------------------------------------------------- */
+function startScanner(onDecoded){
+  stopScannerIfActive();
+  const el = document.getElementById('reader');
+  if(!el) return;
+  const formats = [
+    Html5QrcodeSupportedFormats.QR_CODE,
+    Html5QrcodeSupportedFormats.EAN_13,
+    Html5QrcodeSupportedFormats.EAN_8,
+    Html5QrcodeSupportedFormats.UPC_A,
+    Html5QrcodeSupportedFormats.UPC_E,
+    Html5QrcodeSupportedFormats.CODE_128,
+    Html5QrcodeSupportedFormats.CODE_39
+  ];
+  const inst = new Html5Qrcode("reader", { formatsToSupport: formats, verbose:false });
+  scanState = inst;
+  inst.start(
+    { facingMode: "environment" },
+    { fps: 10, qrbox: { width: 240, height: 240 } },
+    (decodedText)=>{ stopScannerIfActive(); onDecoded(decodedText); },
+    ()=>{}
+  ).catch(err=>{
+    toast('Kamera-Zugriff nicht möglich. Bitte Berechtigung erteilen.');
+  });
+}
+function stopScannerIfActive(){
+  if(scanState){
+    try{ scanState.stop().then(()=>scanState.clear()).catch(()=>{}); }catch(e){}
+    scanState = null;
+  }
+}
+
+/* ---------------------------------------------------------
+   EVENT-BINDINGS PRO VIEW
+--------------------------------------------------------- */
+function escapeHtml(str){
+  return String(str??'').replace(/[&<>"']/g, m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+}
+
+function bindViewEvents(){
+  document.querySelectorAll('[data-nav]').forEach(b=>b.addEventListener('click', ()=>navigate(b.dataset.nav)));
+
+  /* ---- BOX VIEW ---- */
+  const startBoxScan = document.getElementById('startBoxScan');
+  if(startBoxScan) startBoxScan.addEventListener('click', ()=>{
+    startScanner(code=>{ activeBoxCode = code; render(); });
+  });
+  const manualBoxGo = document.getElementById('manualBoxGo');
+  if(manualBoxGo) manualBoxGo.addEventListener('click', ()=>{
+    const v = document.getElementById('manualBoxCode').value.trim();
+    if(v){ activeBoxCode = v; render(); }
+  });
+  document.querySelectorAll('[data-open-box]').forEach(c=>c.addEventListener('click', ()=>{
+    activeBoxCode = c.dataset.openBox; render();
+  }));
+  const saveNewBox = document.getElementById('saveNewBox');
+  if(saveNewBox) saveNewBox.addEventListener('click', ()=>{
+    const location = document.getElementById('newBoxLocation').value.trim();
+    const note = document.getElementById('newBoxNote').value.trim();
+    db.boxes.push({ id: uid(), code: activeBoxCode, location, note, createdAt: Date.now(), lastCheckedAt: null });
+    saveDB(); toast('Box gespeichert'); render();
+  });
+  const backToBoxScan = document.getElementById('backToBoxScan');
+  if(backToBoxScan) backToBoxScan.addEventListener('click', ()=>{ activeBoxCode=null; render(); });
+  const closeBoxBtn = document.getElementById('closeBoxBtn');
+  if(closeBoxBtn) closeBoxBtn.addEventListener('click', ()=>{ activeBoxCode=null; render(); });
+  const editBoxBtn = document.getElementById('editBoxBtn');
+  if(editBoxBtn) editBoxBtn.addEventListener('click', ()=>{
+    const area = document.getElementById('boxEditArea');
+    area.style.display = area.style.display==='none' ? 'block':'none';
+  });
+  const saveBoxEdit = document.getElementById('saveBoxEdit');
+  if(saveBoxEdit) saveBoxEdit.addEventListener('click', ()=>{
+    const box = getBox(activeBoxCode);
+    box.location = document.getElementById('editLocation').value.trim();
+    box.note = document.getElementById('editNote').value.trim();
+    saveDB(); toast('Aktualisiert'); render();
+  });
+
+  /* ---- ARTIKEL VIEW ---- */
+  const startArtikelScan = document.getElementById('startArtikelScan');
+  if(startArtikelScan) startArtikelScan.addEventListener('click', ()=>{
+    startScanner(code=>{ activeBarcode = code; assignFlowStep=null; render(); });
+  });
+  const manualBarcodeGo = document.getElementById('manualBarcodeGo');
+  if(manualBarcodeGo) manualBarcodeGo.addEventListener('click', ()=>{
+    const v = document.getElementById('manualBarcode').value.trim();
+    if(v){ activeBarcode = v; assignFlowStep=null; render(); }
+  });
+  document.querySelectorAll('[data-open-product]').forEach(c=>c.addEventListener('click', ()=>{
+    activeBarcode = c.dataset.openProduct; assignFlowStep=null; render();
+  }));
+  const backToArtikelScan = document.getElementById('backToArtikelScan');
+  if(backToArtikelScan) backToArtikelScan.addEventListener('click', ()=>{ activeBarcode=null; render(); });
+  const saveNewProduct = document.getElementById('saveNewProduct');
+  if(saveNewProduct) saveNewProduct.addEventListener('click', ()=>{
+    const name = document.getElementById('newProdName').value.trim();
+    const price = parseFloat(document.getElementById('newProdPrice').value)||0;
+    const shipping = parseFloat(document.getElementById('newProdShipping').value)||0;
+    if(!name){ toast('Bitte einen Namen eingeben'); return; }
+    db.products.push({ barcode: activeBarcode, name, price, shipping, createdAt: Date.now() });
+    saveDB(); assignFlowStep='select-box'; render();
+  });
+  const closeProductBtn = document.getElementById('closeProductBtn');
+  if(closeProductBtn) closeProductBtn.addEventListener('click', ()=>{ activeBarcode=null; render(); });
+  const addStockBtn = document.getElementById('addStockBtn');
+  if(addStockBtn) addStockBtn.addEventListener('click', ()=>{ assignFlowStep='select-box'; render(); });
+  const editProductBtn = document.getElementById('editProductBtn');
+  if(editProductBtn) editProductBtn.addEventListener('click', ()=>{
+    const p = getProduct(activeBarcode);
+    const name = prompt('Produktname', p.name); if(name===null) return;
+    const price = parseFloat(prompt('Verkaufspreis (€)', p.price)); 
+    const shipping = parseFloat(prompt('Versandkosten (€)', p.shipping));
+    p.name = name.trim()||p.name;
+    if(!isNaN(price)) p.price = price;
+    if(!isNaN(shipping)) p.shipping = shipping;
+    saveDB(); toast('Produkt aktualisiert'); render();
+  });
+  document.querySelectorAll('[data-stockplus]').forEach(b=>b.addEventListener('click', ()=>{
+    const s = db.stock.find(x=>x.id===b.dataset.stockplus); s.qty++; saveDB(); render();
+  }));
+  document.querySelectorAll('[data-stockminus]').forEach(b=>b.addEventListener('click', ()=>{
+    const s = db.stock.find(x=>x.id===b.dataset.stockminus); if(s.qty>0) s.qty--; saveDB(); render();
+  }));
+  document.querySelectorAll('[data-stockdel]').forEach(b=>b.addEventListener('click', ()=>{
+    if(!confirm('Diese Zuordnung wirklich entfernen?')) return;
+    db.stock = db.stock.filter(x=>x.id!==b.dataset.stockdel); saveDB(); render();
+  }));
+
+  /* ---- ASSIGN FLOW ---- */
+  const startAssignScan = document.getElementById('startAssignScan');
+  if(startAssignScan) startAssignScan.addEventListener('click', ()=>{
+    startScanner(code=>{
+      if(!getBox(code)){ toast('Diese Box ist noch nicht registriert. Bitte zuerst im Box-Tab anlegen.'); return; }
+      assignTargetBoxCode = code; assignFlowStep='enter-qty'; render();
+    });
+  });
+  const assignBoxSelectGo = document.getElementById('assignBoxSelectGo');
+  if(assignBoxSelectGo) assignBoxSelectGo.addEventListener('click', ()=>{
+    const v = document.getElementById('assignBoxSelect').value;
+    if(!v){ toast('Bitte eine Box auswählen'); return; }
+    assignTargetBoxCode = v; assignFlowStep='enter-qty'; render();
+  });
+  const confirmAssignQty = document.getElementById('confirmAssignQty');
+  if(confirmAssignQty) confirmAssignQty.addEventListener('click', ()=>{
+    const qty = parseInt(document.getElementById('assignQty').value)||0;
+    if(qty<=0){ toast('Bitte eine gültige Menge eingeben'); return; }
+    const box = getBox(assignTargetBoxCode);
+    let entry = db.stock.find(s=>s.barcode===activeBarcode && s.boxId===box.id);
+    if(entry){ entry.qty += qty; } else { db.stock.push({ id: uid(), barcode: activeBarcode, boxId: box.id, qty }); }
+    saveDB(); toast('Bestand zugeordnet'); assignFlowStep=null; assignTargetBoxCode=null; render();
+  });
+  document.querySelectorAll('#cancelAssign').forEach(b=>b.addEventListener('click', ()=>{
+    assignFlowStep=null; assignTargetBoxCode=null; render();
+  }));
+
+  /* ---- ÜBERSICHT ---- */
+  const uebSearch = document.getElementById('uebSearch');
+  if(uebSearch){
+    uebSearch.addEventListener('input', ()=>{ uebersichtSearch = uebSearch.value; render(); uebSearch.focus(); uebSearch.setSelectionRange(uebSearch.value.length,uebSearch.value.length); });
+  }
+  document.querySelectorAll('[data-mode]').forEach(b=>b.addEventListener('click', ()=>{ uebersichtMode=b.dataset.mode; render(); }));
+  document.querySelectorAll('[data-toggle-box]').forEach(c=>c.addEventListener('click', ()=>{
+    const id = c.dataset.toggleBox;
+    if(openBoxIds.has(id)) openBoxIds.delete(id); else openBoxIds.add(id);
+    render();
+  }));
+  document.querySelectorAll('[data-open-product-list]').forEach(c=>c.addEventListener('click', ()=>{
+    activeBarcode = c.dataset.openProductList; assignFlowStep=null; navigate('artikel');
+  }));
+
+  /* ---- INVENTUR ---- */
+  const startInventurScan = document.getElementById('startInventurScan');
+  if(startInventurScan) startInventurScan.addEventListener('click', ()=>{
+    startScanner(code=>{
+      if(!getBox(code)){ toast('Unbekannte Box'); return; }
+      inventurActiveBoxCode = code; inventurCounts = {}; render();
+    });
+  });
+  document.querySelectorAll('[data-inv-open]').forEach(c=>c.addEventListener('click', ()=>{
+    inventurActiveBoxCode = c.dataset.invOpen; inventurCounts = {}; render();
+  }));
+  document.querySelectorAll('[data-invplus]').forEach(b=>b.addEventListener('click', ()=>{
+    const id = b.dataset.invplus; const s = db.stock.find(x=>x.id===id);
+    inventurCounts[id] = (inventurCounts[id]!==undefined?inventurCounts[id]:s.qty)+1; render();
+  }));
+  document.querySelectorAll('[data-invminus]').forEach(b=>b.addEventListener('click', ()=>{
+    const id = b.dataset.invminus; const s = db.stock.find(x=>x.id===id);
+    const cur = inventurCounts[id]!==undefined?inventurCounts[id]:s.qty;
+    inventurCounts[id] = Math.max(0,cur-1); render();
+  }));
+  const confirmInventurBtn = document.getElementById('confirmInventurBtn');
+  if(confirmInventurBtn) confirmInventurBtn.addEventListener('click', ()=>{
+    const box = getBox(inventurActiveBoxCode);
+    const items = stockForBox(box.id);
+    items.forEach(s=>{
+      const counted = inventurCounts[s.id]!==undefined ? inventurCounts[s.id] : s.qty;
+      if(counted !== s.qty){
+        db.discrepancies.push({ date: Date.now(), boxId: box.id, barcode: s.barcode, expectedQty: s.qty, countedQty: counted });
+        s.qty = counted;
+      }
+    });
+    box.lastCheckedAt = Date.now();
+    saveDB(); toast('Inventur gespeichert'); inventurActiveBoxCode=null; inventurCounts={}; render();
+  });
+  const cancelInventurBtn = document.getElementById('cancelInventurBtn');
+  if(cancelInventurBtn) cancelInventurBtn.addEventListener('click', ()=>{
+    inventurActiveBoxCode=null; inventurCounts={}; render();
+  });
+}
+
+/* ---------------------------------------------------------
+   START
+--------------------------------------------------------- */
+navigate('dashboard');
+</script>
+</body>
+</html>
